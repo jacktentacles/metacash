@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html>
+<head>
+  <title>Game Wallet</title>
+  <style>
+    body { font-family: sans-serif; padding: 20px; background: #eee; }
+    .box { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
+    input, button { width: 100%; padding: 10px; margin-top: 10px; }
+  </style>
+</head>
+<body>
+  <div class="box">
+    <h2>Login to Wallet</h2>
+    <input type="text" id="customId" placeholder="Enter username">
+    <button onclick="login()">Login</button>
+
+    <div id="wallet" style="display:none;">
+      <h3>Balance: <span id="balance">...</span></h3>
+      <input type="number" id="amount" placeholder="Amount">
+      <input type="text" id="receiverId" placeholder="Receiver Username">
+      <button onclick="sendCoins()">Send Coins</button>
+    </div>
+  </div>
+
+  <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
+  <script>
+    const titleId = "7FA8D"; // replace with your PlayFab title ID
+    PlayFab.settings.titleId = titleId;
+    let sessionUser = "";
+
+    function login() {
+      const customId = document.getElementById("customId").value;
+      sessionUser = customId;
+
+      PlayFabClientSDK.LoginWithCustomID({
+        CustomId: customId,
+        CreateAccount: true
+      }, (result) => {
+        console.log("Logged in:", result);
+        document.getElementById("wallet").style.display = "block";
+        getBalance();
+      }, (error) => {
+        console.error("Login failed:", error);
+      });
+    }
+
+    function getBalance() {
+      PlayFabClientSDK.GetUserInventory({}, (result) => {
+        const coins = result.VirtualCurrency?.GC || 0;
+        document.getElementById("balance").textContent = coins;
+      });
+    }
+
+    function sendCoins() {
+      const amount = parseInt(document.getElementById("amount").value);
+      const receiver = document.getElementById("receiverId").value;
+
+      if (!amount || !receiver) return alert("Fill in all fields");
+
+      // This part requires a cloud script on PlayFab to actually transfer currency.
+      alert("To send currency, you must call a Cloud Script function.");
+    }
+  </script>
+</body>
+</html>
