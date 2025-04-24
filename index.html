@@ -1,150 +1,202 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Meta Cash Wallet</title>
+  <title>Meta Cash</title>
   <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
   <style>
     body {
-      background-color: #000;
-      color: white;
-      font-family: 'Segoe UI', sans-serif;
       margin: 0;
-      padding: 0;
+      font-family: Arial, sans-serif;
+      background-color: black;
+      color: white;
     }
     .container {
-      padding: 20px;
       max-width: 400px;
       margin: auto;
-    }
-    h1 {
-      color: #00ff5f;
-      text-align: center;
+      padding: 20px;
     }
     input, button {
       width: 100%;
-      padding: 12px;
+      padding: 10px;
       margin: 10px 0;
+      border-radius: 5px;
       border: none;
-      border-radius: 6px;
       font-size: 16px;
     }
     input {
-      background: #222;
+      background: #1e1e1e;
       color: white;
     }
     button {
       background-color: #00ff5f;
       color: black;
       font-weight: bold;
-      cursor: pointer;
     }
-    #balance {
-      font-size: 2.2em;
-      margin: 20px 0;
-      text-align: center;
-    }
-    #walletUI {
-      display: none;
-    }
-    .card {
-      background: linear-gradient(to right, #111, #333);
+    .tab { display: none; }
+    .nav button {
+      width: 25%;
+      float: left;
+      background: #111;
       color: white;
-      border-radius: 12px;
+      border-top: 1px solid #00ff5f;
+    }
+    .nav:after { content: ""; display: table; clear: both; }
+    .active-tab { display: block; }
+    .card {
+      background: #111;
       padding: 20px;
-      margin-top: 20px;
-      box-shadow: 0 0 20px rgba(0,255,100,0.3);
+      border-radius: 12px;
+      box-shadow: 0 0 15px #00ff5f33;
+      margin-top: 10px;
     }
-    .card .title {
-      font-size: 14px;
-      color: #aaa;
-    }
-    .card .number {
-      font-size: 1.2em;
-      letter-spacing: 2px;
+    .card-number {
+      font-size: 1.3em;
       margin: 10px 0;
+      letter-spacing: 2px;
     }
-    .card .footer {
-      display: flex;
-      justify-content: space-between;
-      font-size: 12px;
+    .label {
+      font-size: 0.8em;
+      color: #aaa;
     }
   </style>
 </head>
 <body>
-  <div class="container">
-    <h1>Meta Wallet</h1>
+<div class="container" id="authUI">
+  <h2>Meta Cash</h2>
+  <input type="text" id="username" placeholder="Username">
+  <input type="password" id="password" placeholder="Password">
+  <button onclick="login()">Login</button>
+  <button onclick="register()">Register</button>
+</div>
 
-    <div id="loginUI">
-      <input type="text" id="customId" placeholder="Enter your username">
-      <button onclick="login()">Login</button>
-    </div>
+<div class="container" id="mainUI" style="display:none;">
+  <h2>Welcome to Meta Cash</h2>
 
-    <div id="walletUI">
-      <div id="balance">$0.00</div>
+  <div class="tab active-tab" id="walletTab">
+    <h3>Balance: <span id="balance">$0.00</span></h3>
+    <input type="number" id="amount" placeholder="Amount ($)">
+    <input type="text" id="receiver" placeholder="Receiver Username">
+    <button onclick="sendMoney()">Send</button>
+  </div>
 
-      <input type="number" id="amount" placeholder="Amount to send">
-      <input type="text" id="receiverId" placeholder="Receiver username">
-      <button onclick="sendCoins()">Send</button>
+  <div class="tab" id="historyTab">
+    <h3>Transaction History</h3>
+    <div id="historyList">Loading...</div>
+  </div>
 
-      <div class="card">
-        <div class="title">Meta Debit Card</div>
-        <div class="number" id="cardUser">0000 0000 0000 0000</div>
-        <div class="footer">
-          <div>PLAYER</div>
-          <div>Meta Dollars</div>
-        </div>
-      </div>
+  <div class="tab" id="cardTab">
+    <h3>Meta Debit Card</h3>
+    <div class="card">
+      <div class="label">CARD NUMBER</div>
+      <div class="card-number" id="cardNum">0000 0000 0000 0000</div>
+      <div class="label">EXP / MPC</div>
+      <div id="cardExp">--/--</div>
     </div>
   </div>
 
-  <script>
-    const titleId = "7FA8D";
-    PlayFab.settings.titleId = titleId;
-    let userId = "";
+  <div class="tab" id="settingsTab">
+    <h3>Settings</h3>
+    <button onclick="logout()">Logout</button>
+  </div>
 
-    function login() {
-      const id = document.getElementById("customId").value;
-      if (!id) return alert("Please enter a username.");
-      userId = id;
-      PlayFabClientSDK.LoginWithCustomID({
-        CustomId: id,
-        CreateAccount: true
-      }, function(result) {
-        document.getElementById("loginUI").style.display = "none";
-        document.getElementById("walletUI").style.display = "block";
-        document.getElementById("cardUser").innerText = "**** **** **** " + id.slice(-4).padStart(4, "0");
-        getBalance();
-      }, function(error) {
-        alert("Login failed: " + error.errorMessage);
-      });
-    }
+  <div class="nav">
+    <button onclick="switchTab('walletTab')">Wallet</button>
+    <button onclick="switchTab('historyTab')">History</button>
+    <button onclick="switchTab('cardTab')">Card</button>
+    <button onclick="switchTab('settingsTab')">Settings</button>
+  </div>
+</div>
 
-    function getBalance() {
-      PlayFabClientSDK.GetUserInventory({}, function(result) {
-        const metaDollars = result.VirtualCurrency?.MD || 0;
-        document.getElementById("balance").textContent = `$${(metaDollars / 100).toFixed(2)}`;
-      });
-    }
+<script>
+  const titleId = "7FA8D";
+  PlayFab.settings.titleId = titleId;
+  let user = "";
 
-    function sendCoins() {
-      const amount = parseInt(document.getElementById("amount").value) * 100;
-      const receiver = document.getElementById("receiverId").value;
-      if (!amount || !receiver) return alert("Fill in all fields");
-      if (receiver === userId) return alert("Cannot send to yourself");
+  function switchTab(id) {
+    document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active-tab'));
+    document.getElementById(id).classList.add('active-tab');
+    if (id === 'historyTab') loadHistory();
+  }
 
-      PlayFabClientSDK.ExecuteCloudScript({
-        FunctionName: "sendCurrency",
-        FunctionParameter: {
-          targetId: receiver,
-          amount: amount
-        }
-      }, function(response) {
-        alert("Meta Dollars sent!");
-        getBalance();
-      }, function(error) {
-        alert("Send failed: " + error.errorMessage);
-      });
-    }
-  </script>
+  function login() {
+    const u = document.getElementById("username").value;
+    const p = document.getElementById("password").value;
+    PlayFabClientSDK.LoginWithPlayFab({
+      Username: u, Password: p
+    }, res => {
+      user = u;
+      afterLogin();
+    }, err => alert("Login failed: " + err.errorMessage));
+  }
+
+  function register() {
+    const u = document.getElementById("username").value;
+    const p = document.getElementById("password").value;
+    PlayFabClientSDK.RegisterPlayFabUser({
+      Username: u, Password: p, RequireBothUsernameAndEmail: false
+    }, res => {
+      user = u;
+      generateCard();
+      afterLogin();
+    }, err => alert("Register failed: " + err.errorMessage));
+  }
+
+  function afterLogin() {
+    document.getElementById("authUI").style.display = "none";
+    document.getElementById("mainUI").style.display = "block";
+    getBalance();
+    loadCard();
+  }
+
+  function logout() {
+    location.reload();
+  }
+
+  function getBalance() {
+    PlayFabClientSDK.GetUserInventory({}, res => {
+      let md = res.VirtualCurrency?.MD || 0;
+      document.getElementById("balance").innerText = `$${(md/100).toFixed(2)}`;
+    });
+  }
+
+  function sendMoney() {
+    let amount = parseInt(document.getElementById("amount").value) * 100;
+    let to = document.getElementById("receiver").value;
+    if (!amount || !to) return alert("Enter amount and receiver.");
+    PlayFabClientSDK.ExecuteCloudScript({
+      FunctionName: "sendCurrency",
+      FunctionParameter: { targetId: to, amount: amount }
+    }, res => {
+      alert("Sent!");
+      getBalance();
+    }, err => alert("Send failed: " + err.errorMessage));
+  }
+
+  function loadHistory() {
+    PlayFabClientSDK.GetUserData({}, res => {
+      let log = JSON.parse(res.Data?.history?.Value || "[]");
+      document.getElementById("historyList").innerHTML =
+        log.reverse().map(e =>
+          `<p>${e.type} $${(e.amount/100).toFixed(2)} to ${e.user} (${e.status})</p>`).join("");
+    });
+  }
+
+  function generateCard() {
+    PlayFabClientSDK.ExecuteCloudScript({
+      FunctionName: "generateCard"
+    }, res => loadCard());
+  }
+
+  function loadCard() {
+    PlayFabClientSDK.GetUserReadOnlyData({}, res => {
+      let data = res.Data || {};
+      let card = data.cardNum?.Value || "0000 0000 0000 0000";
+      let exp = data.exp?.Value || "--/--";
+      let mpc = data.mpc?.Value || "---";
+      document.getElementById("cardNum").innerText = card;
+      document.getElementById("cardExp").innerText = `${exp} / ${mpc}`;
+    });
+  }
+</script>
 </body>
 </html>
