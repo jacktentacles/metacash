@@ -2,63 +2,148 @@
 <html>
 <head>
   <title>Game Wallet</title>
+  <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
   <style>
-    body { font-family: sans-serif; padding: 20px; background: #eee; }
-    .box { background: white; padding: 20px; border-radius: 8px; max-width: 400px; margin: auto; }
-    input, button { width: 100%; padding: 10px; margin-top: 10px; }
+    body {
+      background-color: #000;
+      color: white;
+      font-family: 'Segoe UI', sans-serif;
+      margin: 0;
+      padding: 0;
+    }
+    .container {
+      padding: 20px;
+      max-width: 400px;
+      margin: auto;
+    }
+    h1 {
+      color: #00ff5f;
+      text-align: center;
+    }
+    input, button {
+      width: 100%;
+      padding: 12px;
+      margin: 10px 0;
+      border: none;
+      border-radius: 6px;
+      font-size: 16px;
+    }
+    input {
+      background: #222;
+      color: white;
+    }
+    button {
+      background-color: #00ff5f;
+      color: black;
+      font-weight: bold;
+      cursor: pointer;
+    }
+    #balance {
+      font-size: 2.2em;
+      margin: 20px 0;
+      text-align: center;
+    }
+    #walletUI {
+      display: none;
+    }
+    .card {
+      background: linear-gradient(to right, #111, #333);
+      color: white;
+      border-radius: 12px;
+      padding: 20px;
+      margin-top: 20px;
+      box-shadow: 0 0 20px rgba(0,255,100,0.3);
+    }
+    .card .title {
+      font-size: 14px;
+      color: #aaa;
+    }
+    .card .number {
+      font-size: 1.2em;
+      letter-spacing: 2px;
+      margin: 10px 0;
+    }
+    .card .footer {
+      display: flex;
+      justify-content: space-between;
+      font-size: 12px;
+    }
   </style>
 </head>
 <body>
-  <div class="box">
-    <h2>Login to Wallet</h2>
-    <input type="text" id="customId" placeholder="Enter username">
-    <button onclick="login()">Login</button>
+  <div class="container">
+    <h1>Game Cash</h1>
 
-    <div id="wallet" style="display:none;">
-      <h3>Balance: <span id="balance">...</span></h3>
-      <input type="number" id="amount" placeholder="Amount">
-      <input type="text" id="receiverId" placeholder="Receiver Username">
-      <button onclick="sendCoins()">Send Coins</button>
+    <div id="loginUI">
+      <input type="text" id="customId" placeholder="Enter your username">
+      <button onclick="login()">Login</button>
+    </div>
+
+    <div id="walletUI">
+      <div id="balance">$0</div>
+
+      <input type="number" id="amount" placeholder="Amount to send">
+      <input type="text" id="receiverId" placeholder="Receiver username">
+      <button onclick="sendCoins()">Send</button>
+
+      <div class="card">
+        <div class="title">Game Debit Card</div>
+        <div class="number" id="cardUser">0000 0000 0000 0000</div>
+        <div class="footer">
+          <div>PLAYER</div>
+          <div>GAME COIN</div>
+        </div>
+      </div>
     </div>
   </div>
 
-  <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
   <script>
-    const titleId = "7FA8D"; // replace with your PlayFab title ID
+    const titleId = "7FA8D";
     PlayFab.settings.titleId = titleId;
-    let sessionUser = "";
+    let userId = "";
 
     function login() {
-      const customId = document.getElementById("customId").value;
-      sessionUser = customId;
-
+      const id = document.getElementById("customId").value;
+      if (!id) return alert("Please enter a username.");
+      userId = id;
       PlayFabClientSDK.LoginWithCustomID({
-        CustomId: customId,
+        CustomId: id,
         CreateAccount: true
-      }, (result) => {
-        console.log("Logged in:", result);
-        document.getElementById("wallet").style.display = "block";
+      }, function(result) {
+        document.getElementById("loginUI").style.display = "none";
+        document.getElementById("walletUI").style.display = "block";
+        document.getElementById("cardUser").innerText = "**** **** **** " + id.slice(-4).padStart(4, "0");
         getBalance();
-      }, (error) => {
-        console.error("Login failed:", error);
+      }, function(error) {
+        alert("Login failed: " + error.errorMessage);
       });
     }
 
     function getBalance() {
-      PlayFabClientSDK.GetUserInventory({}, (result) => {
+      PlayFabClientSDK.GetUserInventory({}, function(result) {
         const coins = result.VirtualCurrency?.GC || 0;
-        document.getElementById("balance").textContent = coins;
+        document.getElementById("balance").textContent = `$${coins}`;
       });
     }
 
     function sendCoins() {
       const amount = parseInt(document.getElementById("amount").value);
       const receiver = document.getElementById("receiverId").value;
+      if (!amount || !receiver) return alert("Fill all fields");
+      if (receiver === userId) return alert("Cannot send to yourself");
 
-      if (!amount || !receiver) return alert("Fill in all fields");
-
-      // This part requires a cloud script on PlayFab to actually transfer currency.
-      alert("To send currency, you must call a Cloud Script function.");
+      PlayFabClientSDK.ExecuteCloudScript({
+        FunctionName: "sendCurrency",
+        FunctionParameter: {
+          targetId: receiver,
+          amount: amount
+        }
+      }, function(response) {
+        alert("Money sent!");
+        getBalance();
+      }, function(error) {
+        alert("Send failed: " + error.errorMessage);
+      });
     }
   </script>
 </body>
