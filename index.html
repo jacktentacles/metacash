@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
 <head>
-  <title>Game Wallet</title>
+  <title>Meta Cash Wallet</title>
   <script src="https://download.playfab.com/PlayFabClientApi.js"></script>
   <style>
     body {
@@ -72,7 +72,7 @@
 </head>
 <body>
   <div class="container">
-    <h1>Game Cash</h1>
+    <h1>Meta Wallet</h1>
 
     <div id="loginUI">
       <input type="text" id="customId" placeholder="Enter your username">
@@ -80,18 +80,18 @@
     </div>
 
     <div id="walletUI">
-      <div id="balance">$0</div>
+      <div id="balance">$0.00</div>
 
       <input type="number" id="amount" placeholder="Amount to send">
       <input type="text" id="receiverId" placeholder="Receiver username">
       <button onclick="sendCoins()">Send</button>
 
       <div class="card">
-        <div class="title">Game Debit Card</div>
+        <div class="title">Meta Debit Card</div>
         <div class="number" id="cardUser">0000 0000 0000 0000</div>
         <div class="footer">
           <div>PLAYER</div>
-          <div>GAME COIN</div>
+          <div>Meta Dollars</div>
         </div>
       </div>
     </div>
@@ -121,15 +121,15 @@
 
     function getBalance() {
       PlayFabClientSDK.GetUserInventory({}, function(result) {
-        const coins = result.VirtualCurrency?.GC || 0;
-        document.getElementById("balance").textContent = `$${coins}`;
+        const metaDollars = result.VirtualCurrency?.MD || 0;
+        document.getElementById("balance").textContent = `$${(metaDollars / 100).toFixed(2)}`;
       });
     }
 
     function sendCoins() {
-      const amount = parseInt(document.getElementById("amount").value);
+      const amount = parseInt(document.getElementById("amount").value) * 100;
       const receiver = document.getElementById("receiverId").value;
-      if (!amount || !receiver) return alert("Fill all fields");
+      if (!amount || !receiver) return alert("Fill in all fields");
       if (receiver === userId) return alert("Cannot send to yourself");
 
       PlayFabClientSDK.ExecuteCloudScript({
@@ -139,7 +139,7 @@
           amount: amount
         }
       }, function(response) {
-        alert("Money sent!");
+        alert("Meta Dollars sent!");
         getBalance();
       }, function(error) {
         alert("Send failed: " + error.errorMessage);
